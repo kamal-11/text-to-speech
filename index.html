@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Text-to-Speech Demo</title>
+  </head>
+  <body>
+    <h1>Text-to-Speech Demo</h1>
+    <textarea id="text" rows="4" cols="50">Hello, how are you?</textarea><br>
+    <label for="voice">Select a voice:</label>
+    <select id="voice">
+      <option value="">Default</option>
+      <option value="Google UK English Female">Female (UK English)</option>
+      <option value="Google US English Male">Male (US English)</option>
+    </select><br>
+    <button onclick="speak()">Speak</button><br>
+    <h1>Audio Recording Demo</h1>
+    <button id="recordButton">Record</button>
+    <button id="stopButton" disabled>Stop</button>
+    <button id="downloadButton" disabled>Download</button>
+    <br><br>
+    <audio id="audioPlayer" controls></audio>
+    <script>
+      let mediaRecorder;
+      let chunks = [];
+      const recordButton = document.getElementById('recordButton');
+      const stopButton = document.getElementById('stopButton');
+      const downloadButton = document.getElementById('downloadButton');
+      const audioPlayer = document.getElementById('audioPlayer');
+
+      // Configure recording options
+      const constraints = { audio: true };
+      const mimeType = 'audio/wav';
+
+      // Request access to the microphone
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+          // Create a MediaRecorder instance to record audio
+          mediaRecorder = new MediaRecorder(stream);
+
+          // Add event listeners for recording events
+          mediaRecorder.addEventListener('dataavailable', function(e) {
+            chunks.push(e.data);
+          });
+          mediaRecorder.addEventListener('stop', function() {
+            // Convert the recorded chunks into a single Blob object
+            const blob = new Blob(chunks, { type: mimeType });
+            chunks = [];
+
+            // Update the audio element to play the recorded audio
+            const audioUrl = URL.createObjectURL(blob);
+            audioPlayer.src = audioUrl;
+
+            // Enable the download button
+            downloadButton.disabled = false;
+            downloadButton.addEventListener('click', function() {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              document.body.appendChild(a);
+              a.style = 'display: none';
+              a.href = url;
+              a.download = 'recording.wav';
+              a.click();
+              window.URL.revokeObjectURL(url);
+            });
+          });
+        })
+        .catch(function(err) {
+          console.warn('Failed to access microphone', err);
+        });
+
+      // Add event listeners for button clicks
+      recordButton.addEventListener('click', function() {
+        mediaRecorder.start();
+        recordButton.disabled = true;
+        stopButton.disabled = false;
+        downloadButton.disabled = true;
+      });
+      stopButton.addEventListener('click', function() {
+        mediaRecorder.stop();
+        recordButton.disabled = false;
+        stopButton.disabled = true;
+      });
+      function speak() {
+        // Create an instance of SpeechSynthesisUtterance
+        const msg = new SpeechSynthesisUtterance();
+        
+        // Get the text and selected voice from the HTML form
+        const text = document.getElementById('text').value;
+        const voice = document.getElementById('voice').value;
+        
+        // Set the text and voice properties of the SpeechSynthesisUtterance object
+        msg.text = text;
+        if (voice) {
+          const voices = window.speechSynthesis.getVoices();
+          msg.voice = voices.find(v => v.name === voice);
+        }
+        
+        // Speak the text using the selected voice
+        window.speechSynthesis.speak(msg);
+      }
+    </script>
+  </body>
+</html>
